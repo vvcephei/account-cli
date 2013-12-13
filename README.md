@@ -58,7 +58,7 @@ Usage
 -----
 #### To download new transactions and then print a nice report:
 ```bash
-accounting path/to/ledger/journal.dat path/to/your/config.yaml
+account-cli path/to/ledger/journal.dat path/to/your/config.yaml
 ```
 
 #### Other utilities:
