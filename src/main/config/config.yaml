@@ -25,6 +25,8 @@
 ofx:
   # This key will be used as the indentifier for your bank throughout account-cli
   capitalone360:
+    # The URL to reach the OFX server at. ALWAYS USE HTTPS! Otherwise, all your
+    # passwords and bank info will be visible to anyone watching the network traffic.
     bootstrapUrl: https://ofx.capitalone360.com/OFX/ofx.html
     fiOrg: ING DIRECT
     fiId: 031176110
