@@ -1,0 +1,6 @@
+#!/bin/bash
+
+echo "from 13/1/01 to 13/3/31"
+echo "from 13/4/01 to 13/6/30"
+echo "from 13/7/01 to 13/9/30"
+echo "from 13/10/01 to 13/12/31"

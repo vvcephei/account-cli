@@ -1,0 +1,50 @@
+#!/usr/bin/python
+
+import sys
+from calendar import monthrange
+from datetime import date, datetime
+
+start = 1
+end = 1
+now = 1
+
+today = date.today()
+
+for period in sys.stdin:
+  q1 = date(today.year, 1, 1)
+  q2 = date(today.year, 4, 1)
+  q3 = date(today.year, 7, 1)
+  q4 = date(today.year, 10,1)
+  nq1 = date(today.year+1,1,1)
+  quarters = [q1,q2,q3,q4,nq1]
+
+  quarter = filter(lambda x: today >= x, quarters)[-1]
+  next_quarter = filter(lambda x: today < x, quarters)[0]
+
+  period = period.strip()
+  if period == "this month":
+    end = monthrange(today.year,today.month)[1]
+    now = today.day
+  elif period == "this quarter":
+    end = (next_quarter - quarter).days - 1
+    now = (today - quarter).days
+  elif period == "this year":
+    end = (nq1 - q1).days
+    now = (today - q1).days
+  elif period.startswith("from ") and " to " in period:
+    psplit = period.split(" ")
+    try:
+      s = datetime.strptime(psplit[1], "%y/%m/%d").date()
+      e = datetime.strptime(psplit[3], "%y/%m/%d").date()
+    except:
+      s = datetime.strptime(psplit[1], "%Y/%m/%d").date()
+      e = datetime.strptime(psplit[3], "%Y/%m/%d").date()
+    end = (e - s).days + 1
+    now = (today - s).days + 1
+
+  if end < now: now = end
+
+  total = end-start
+  per = now-start
+  if (total == 0 or per == 0): print "    0"
+  else: print "%4d%%" % (int((1.0*per/total)*100))

@@ -1,0 +1,22 @@
+#!/bin/bash
+
+# Usage: ./reports path/to/ledger_file.dat
+
+#traverse all links to arrive at the real directory of the script.
+SOURCE="${BASH_SOURCE[0]}"
+while [ -h "$SOURCE" ]; do # resolve $SOURCE until the file is no longer a symlink
+  DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
+  SOURCE="$(readlink "$SOURCE")"
+  [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE" # if $SOURCE was a relative symlink, we need to resolve it relative to the path where the symlink file was located
+done
+DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
+
+echo "Balances: Assets and Liabilities"
+ledger -f $1 balance Assets Liabilities Bank:Transfer --pager cat
+echo ""
+echo "Balances: Expenses and Income"
+ledger -f $1 balance Expenses Income --pager cat
+echo ""
+echo "this year" | $DIR/budget
+echo "this quarter" | $DIR/budget
+echo "this month" | $DIR/budget

@@ -1,0 +1,89 @@
+# This section configures the ofx protocol client. Sadly, banks are terrible
+# at sharing this information. As far as I can tell, banks share this
+# information directly with the major financial software vendors, but not with
+# you and me, for no apparent reason.
+#
+# This means you have to find it on your own.
+# Here are some resources:
+#   http://www.ofxhome.com/index.php/home/directory
+#   http://microsoftmoneyoffline.wordpress.com/moneydance-ofx-settings/
+#   http://wiki.gnucash.org/wiki/OFX_Direct_Connect_Bank_Settings
+#   http://microsoftmoneyoffline.wordpress.com/look-up-your-ofx-settings/
+# 
+# other than that, there's always searching google and calling your bank's 
+# customer support. I usually tell them something like "I'm trying to set
+# up some financial software like MS Money or Quicken, and I need the bank's
+# OFX settings." If all they'll do is give you the script for Quicken, you 
+# can tell them you're using open source financial software. Some common ones
+# are GnuCash and Moneydance.
+#
+# If you do manage to locate the right incantation, please, please, please 
+# update the OFX Home directory (http://www.ofxhome.com/index.php/home/directory)
+# This is a community-maintained project to work around this frustrating aspect
+# of the financial world. Just to allay any concerns, the OFX info does not 
+# contain any information about your account specifically.
+ofx:
+  # This key will be used as the indentifier for your bank throughout account-cli
+  capitalone360:
+    bootstrapUrl: https://ofx.capitalone360.com/OFX/ofx.html
+    fiOrg: ING DIRECT
+    fiId: 031176110
+    # for some reason, you have to tell the bank what software you're using,
+    # and they'll only respond for some applications and for some versions.
+    # below is MS Money; another common choice is Quicken: QWIN/1900
+    appId: Money
+    appVer: 1400
+
+# These are either your real username and password or the access keys that you
+# use for financial software like Quicken or Mint. For example, my old 
+# ING Direct account had me generate an id and password for use with Mint
+# so that I wouldn't have to give them my real user and password.
+#
+# Obviously, you need to be careful to keep this file private.
+logins:
+  # this needs to match an ofx key above.
+  capitalone360:
+    id: USERNAME
+    password: PASSWORD
+
+# This section configures the accounts that account-cli will try to download 
+# from OFX or load from CSV. It also maps those accounts to accounts defined 
+# in your ledger file.
+accounts:
+  -
+    # The name of an account in your ledger
+    ledgerName: "Assets:Example:Savings"
+    # Needs to match an ofx key above.
+    ofx: capitalone360
+    # Your bank's routing number
+    routing: 031176110
+    # Your specific account number (e.g., on your checks)
+    account: 123456789
+    # Right now, just SAVINGS or CHECKING. There are more types supported by OFX that I need to add support for.
+    type: SAVINGS
+  -
+    ledgerName: "Assets:Example:Checking"
+    ofx: capitalone360
+    routing: 031176110
+    account: 123456789
+    type: CHECKING
+  -
+    # The name of an account in your ledger
+    ledgerName: "Liabilities:OtherExample"
+    # The path to the csv file (e.g., /home/user/Downloads/trans.csv)
+    csv: example_transactions.csv
+    # Should we ignore the first line?
+    header: true
+    # Which column is the transaction date stored in? (The first column is numbered 0)
+    dateCol: 0
+    # What format is the date stored in?
+    dateFormat: MM/dd/YYYY
+    # Which column is the transaction amount stored in?
+    amountCol: 2
+    # Some banks will give you the amounts inverted for a credit account.
+    # So, we may want to interpret a transaction that says $32.40 as actually -$32.40
+    invertAmount: true
+    # The main memo/payee field. account-cli will also record the rest of the fields
+    # from your CSV file, but it will put the memoCol first.
+    memoCol: 1
+

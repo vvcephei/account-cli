@@ -1,0 +1,8 @@
+*.swp
+**/Private.scala
+**/Test.scala
+sbt
+sbt-launch.jar
+target/
+*.iml
+*.idea/

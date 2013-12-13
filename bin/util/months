@@ -1,0 +1,15 @@
+#!/usr/bin/python
+import sys
+from datetime import date
+from dateutil.relativedelta import relativedelta
+from calendar import monthrange
+
+n_months = int(sys.argv[1])
+
+today = date.today()
+
+for m in reversed(range(0,n_months)):
+  day = today - relativedelta(months = m) 
+  r = monthrange(day.year, day.month)
+  print "from %d/%d/%d to %d/%d/%d" % (day.year, day.month, 1, day.year, day.month, r[1])
+
