@@ -38,6 +38,7 @@ Setup
 -----
 1. Start a ledger file (http://www.ledger-cli.org/3.0/doc/ledger3.html#Start-a-Journal-File)
 2. You don't have to, but the supporting scripts expect you to set up a budget (http://www.ledger-cli.org/3.0/doc/ledger3.html#Budgeting-and-Forecasting), which means your ledger journal will start out like this:
+
 ```
 ~ Monthly
   Expenses:Automotive:Gas   $150.00
@@ -52,6 +53,7 @@ Setup
 
 ... (ledger file continues...)
 ```
+
 3. Set up the config file: copy ```src/main/config/config.yaml``` to a new location (probably right next to your ledger file) and edit it to set up your accounts. See the documentation in the config.yaml for information on how to set it up.
 
 Usage
