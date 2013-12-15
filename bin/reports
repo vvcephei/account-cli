@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # Usage: ./reports path/to/ledger_file.dat
+JOURNAL=$1
 
 #traverse all links to arrive at the real directory of the script.
 SOURCE="${BASH_SOURCE[0]}"
@@ -12,11 +13,11 @@ done
 DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
 
 echo "Balances: Assets and Liabilities"
-ledger -f $1 balance Assets Liabilities Bank:Transfer --pager cat
+ledger -f $JOURNAL balance Assets Liabilities Bank:Transfer --pager cat
 echo ""
 echo "Balances: Expenses and Income"
-ledger -f $1 balance Expenses Income --pager cat
+ledger -f $JOURNAL balance Expenses Income --pager cat
 echo ""
-echo "this year" | $DIR/budget
-echo "this quarter" | $DIR/budget
-echo "this month" | $DIR/budget
+echo "this year" | $DIR/budget $JOURNAL
+echo "this quarter" | $DIR/budget $JOURNAL
+echo "this month" | $DIR/budget $JOURNAL
