@@ -15,7 +15,7 @@ and keep an eye on my budget. However, I was never comfortable with all the acce
 had to my financial life. I also wanted more flexibility with report generation than Mint offers.
 
 Switching to the command line makes a lot of sense, since you can easily script your workflow and
-spend approximately no time performing routine actions. Andrew wrote about using Reckon, a Ruby program for loading transactions from CSV and appending them to your Ledger journal. I started out using the same workflow, but I got tired fast of downloading CSV files from all my accounts. I put together [account-cli](https://github.com/vvcephei/account-cli), which is similar to Reckon, but adds the ability to download transactions straight from the bank using OFX (aka Direct Connect).
+spend approximately no time performing routine actions. Andrew wrote about using Reckon, a Ruby program for loading transactions from CSV and appending them to your Ledger journal. I started out using the same workflow, but I got tired fast of downloading CSV files from all my accounts. So, I put together [account-cli](https://github.com/vvcephei/account-cli), which is similar to Reckon, but adds the ability to download transactions straight from the bank using OFX (aka Direct Connect).
 
 Using account-cli, here is my workflow:
 
