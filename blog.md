@@ -6,7 +6,7 @@ Inspired by Andrew Cantino's
 I started this year out following his workflow. I've used MS MyMoney, GnuCash, KMyMoney, and Mint before.
 Ledger is my clear favorite out of these.
 
-All of the software offerings are retty similar:
+All of the software offerings are similar:
 they download transactions, some do a reasonable job of classifying them, but I universally spend
 longer than I want to wrangling transactions and generating reports. Mint is awesome at sucking in
 transactions and categorizing them. It is focused more on budgeting than the full compliment of 
