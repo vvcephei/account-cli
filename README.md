@@ -17,6 +17,7 @@ This project is inspired by the awesome reckon (https://github.com/cantino/recko
 
 Installing/Updating
 -----
+I have to get ahold of a windows computer to put together scripts and instructions. I'll update the readme when I get it done.
 
 #### Linux/Mac:
 ```bash
