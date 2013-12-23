@@ -21,6 +21,9 @@ I have to get ahold of a windows computer to put together scripts and instructio
 
 #### Linux/Mac:
 ```bash
+# Prerequisite: Install sbt
+# I favor the manual install in the project directory: http://www.scala-sbt.org/release/docs/Getting-Started/Setup.html#manual-installation
+
 # For new installs: Check out this repo
 git clone https://github.com/vvcephei/account-cli.git
 cd account-cli
