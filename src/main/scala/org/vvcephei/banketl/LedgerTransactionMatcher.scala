@@ -6,13 +6,10 @@ import org.vvcephei.scalaledger.lib.parse.{LedgerDataFileParser, Ledger}
 import org.vvcephei.scalaledger.lib.model.LedgerTransaction
 import org.vvcephei.scalaofx.lib.message
 
-case class LedgerTransactionMatcher(ledger: Ledger) {
-  private val parsedLedger = ledger.transactions
-  private val byDate = parsedLedger groupBy {
+case class LedgerTransactionMatcher(entries: List[LedgerTransaction]) {
+  private val byDate = entries groupBy {
     t => message.Util.toDateString(t.date)
   }
-
-  def entries = parsedLedger
 
   def matches(targetDate: DateTime, pred: LedgerTransaction => Boolean) =
     for {
@@ -27,7 +24,7 @@ case class LedgerTransactionMatcher(ledger: Ledger) {
 object LedgerTransactionMatcher {
   def main(args: Array[String]) {
     val ledger = LedgerDataFileParser parse Source.fromFile(args(0)).getLines()
-    val matches = LedgerTransactionMatcher(ledger).parsedLedger sortWith {
+    val matches = LedgerTransactionMatcher(ledger.transactions).entries sortWith {
       (p1, p2) => p1.date isBefore p2.date
     }
     matches foreach println

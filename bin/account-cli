@@ -2,6 +2,8 @@
 
 JOURNAL=$1
 CONFIG=$2
+shift
+shift
 
 #traverse all links to arrive at the real directory of the script.
 SOURCE="${BASH_SOURCE[0]}"
@@ -12,6 +14,6 @@ while [ -h "$SOURCE" ]; do # resolve $SOURCE until the file is no longer a symli
 done
 DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
 
-$DIR/get-transactions --days 40 --ledger $JOURNAL --config $CONFIG
+$DIR/get-transactions --days 90 --ledger $JOURNAL --config $CONFIG $@
 
 $DIR/reports $JOURNAL

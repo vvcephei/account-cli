@@ -21,8 +21,10 @@ object ETL {
   def main(opts: OptionsBuilder.Options) {
     val now = DateTime.now()
     val ledger = LedgerDataFileParser parse Source.fromFile(opts.ledger).getLines()
-    val matcher: LedgerTransactionMatcher = LedgerTransactionMatcher(ledger)
-    val trxClassifier = ml.Classifier(ledger, opts.ledgerAccounts, opts.verbose)
+    val extraTraining = opts.trainingLedgers flatMap {f => (LedgerDataFileParser parse Source.fromFile(f).getLines()).transactions}
+    val oldAndNewTransactions = ledger.transactions ++ extraTraining
+    val matcher: LedgerTransactionMatcher = LedgerTransactionMatcher(oldAndNewTransactions)
+    val trxClassifier = ml.Classifier(oldAndNewTransactions, opts.ledgerAccounts, opts.verbose)
 
     println("current time: " + now)
 

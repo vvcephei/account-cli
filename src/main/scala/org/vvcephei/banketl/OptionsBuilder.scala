@@ -47,6 +47,9 @@ object OptionsBuilder {
   @Parameter(names = Array("-l", "--ledger"), description = "the ledger file")
   var ledger: String = null
 
+  @Parameter(names = Array("-t", "--training-ledger"), description = "ledger files to learn from")
+  var training: java.util.List[String] = Nil
+
   case class OfxAccount(ledgerAccount: String, routing: String, account: String, `type`: AccountType)
 
   case class CsvAccountColumns(date: Int, amount: Int, memo: Int)
@@ -63,6 +66,7 @@ object OptionsBuilder {
                      banksFromCsv: Seq[CsvAccount] = Seq(),
                      startDate: DateTime,
                      ledger: File,
+                     trainingLedgers: List[File],
                      ledgerAccounts: Set[String],
                      outputDir: File,
                      verbose: Boolean)
@@ -145,7 +149,15 @@ object OptionsBuilder {
     val startDate: DateTime =
       if (days < 0) pattern parseDateTime this.startDate
       else new DateTime().withMillisOfDay(0).minusDays(days)
-    Options(download, load, startDate, new File(ledger), ledgerAccounts.toSet, od, verbose)
+    Options(
+      banksToQuery = download,
+      banksFromCsv = load,
+      startDate = startDate,
+      ledger = new File(ledger),
+      trainingLedgers = training.toList map {s => new File(s)},
+      ledgerAccounts = ledgerAccounts.toSet,
+      outputDir = od,
+      verbose = verbose)
   }
 
 }

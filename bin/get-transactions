@@ -9,4 +9,4 @@ while [ -h "$SOURCE" ]; do # resolve $SOURCE until the file is no longer a symli
 done
 DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
 
-java -jar $DIR/../target/scala-2.10/account-cli-assembly-1.0.jar $@
+java -jar $DIR/../target/scala-2.10/account-cli-assembly-1.1.jar $@
