@@ -2,12 +2,12 @@ import AssemblyKeys._ // put this at the top of the file
 
 name := "account-cli"
 
-version := "1.1"
+version := "1.2"
 
 scalaVersion := "2.10.3"
 
 libraryDependencies ++= Seq(
-    "org.vvcephei" %% "scala-ofx" % "1.1",
+    "org.vvcephei" %% "scala-ofx" % "1.2-SNAPSHOT",
     "org.vvcephei" %% "scala-ledger" % "1.0",
     "com.fasterxml.jackson.datatype" % "jackson-datatype-joda" % "2.2.3",
     "org.joda" % "joda-convert" % "1.2",

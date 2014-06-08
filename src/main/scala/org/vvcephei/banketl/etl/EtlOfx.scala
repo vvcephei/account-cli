@@ -3,11 +3,12 @@ package org.vvcephei.banketl.etl
 import org.vvcephei.banketl.{BankEtlTransaction, LedgerTransactionMatcher, OptionsBuilder}
 import org.joda.time.DateTime
 import org.vvcephei.banketl.Util._
-import org.vvcephei.banketl.OptionsBuilder.OfxAccount
+import org.vvcephei.banketl.OptionsBuilder.{FileOfxAccount, Login, WebOfxAccount}
 import org.vvcephei.scalaofx.lib.model.Account
-import org.vvcephei.scalaofx.client.BankClient
+import org.vvcephei.scalaofx.client.{SourceClient, BankClient}
 import org.vvcephei.scalaledger.lib.model.LedgerTransaction
-import org.vvcephei.scalaofx.lib.model.response.{BankStatementError, Transaction}
+import org.vvcephei.scalaofx.lib.model.response.{BankStatement, BankStatementError, Transaction}
+import scala.io.Source
 
 object EtlOfx {
   private def printErrors(errors: Seq[BankStatementError]) =
@@ -16,23 +17,12 @@ object EtlOfx {
     else ()
 
   def etl(opts: OptionsBuilder.Options, now: DateTime, matcher: LedgerTransactionMatcher): List[BankEtlTransaction] = {
-    val clients = for ((login, accounts) <- opts.banksToQuery) yield {
-      BankClient(login.user, login.bank) -> accounts
-    }
 
     println("getting statements...")
 
-    val statements =
-      for {
-        (client, ofxAccounts) <- clients
-        OfxAccount(ledgerName, r, a, t) <- ofxAccounts
-        response = client.bankStatements(Seq(Account(r, a, t)), opts.startDate)
-        _ = printErrors(response.errors)
-        statement <- response.statements
-      } yield {
-        println("%s balance: %.2f".format(ledgerName, statement.ledgerBalance))
-        ledgerName -> statement
-      }
+    val webStatements = statementsFromWeb(opts.banksToQuery, opts.startDate)
+    val fileStatements = statementsFromFile(opts.banksFromOfxFile)
+    val statements = webStatements ++ fileStatements
 
     //    println(mapper writeValueAsString statements)
     //    System.exit(0)
@@ -84,6 +74,31 @@ object EtlOfx {
         date = trx.posted,
         amount = trx.amount,
         description = trx.name.toList ::: trx.memo.toList ::: List(trx.`type`.toString, trx.transactionId))
+    }
+  }
+
+  def statementsFromFile(files: Seq[FileOfxAccount]): Map[String,BankStatement] =
+    (for {
+      FileOfxAccount(ledgerName, file) <- files
+      loaded = SourceClient.bankStatements(Source.fromFile(file))
+      _ = printErrors(loaded.errors)
+      statement <- loaded.statements
+    } yield {
+      println("%s balance: %.2f".format(ledgerName, statement.ledgerBalance))
+      ledgerName -> statement
+    }).toMap
+
+  def statementsFromWeb(banksToQuery: Map[Login, Seq[WebOfxAccount]], startDate: DateTime): Map[String, BankStatement] = {
+    val clients = for ((login, accounts) <- banksToQuery) yield { BankClient(login.user, login.bank) -> accounts}
+    for {
+      (client, ofxAccounts) <- clients
+      WebOfxAccount(ledgerName, r, a, t) <- ofxAccounts
+      response = client.bankStatements(Seq(Account(r, a, t)), startDate)
+      _ = printErrors(response.errors)
+      statement <- response.statements
+    } yield {
+      println("%s balance: %.2f".format(ledgerName, statement.ledgerBalance))
+      ledgerName -> statement
     }
   }
 }

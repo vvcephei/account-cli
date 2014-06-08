@@ -13,7 +13,7 @@ case class LedgerTransactionMatcher(entries: List[LedgerTransaction]) {
 
   def matches(targetDate: DateTime, pred: LedgerTransaction => Boolean) =
     for {
-      d <- (-5 to 5) map targetDate.minusDays
+      d <- (-1 to 1) map targetDate.minusDays
       entry <- byDate.getOrElse(message.Util.toDateString(d), Nil)
       if pred(entry)
     } yield {

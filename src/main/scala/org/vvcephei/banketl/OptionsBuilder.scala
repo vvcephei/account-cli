@@ -50,7 +50,7 @@ object OptionsBuilder {
   @Parameter(names = Array("-t", "--training-ledger"), description = "ledger files to learn from")
   var training: java.util.List[String] = Nil
 
-  case class OfxAccount(ledgerAccount: String, routing: String, account: String, `type`: AccountType)
+  case class WebOfxAccount(ledgerAccount: String, routing: String, account: String, `type`: AccountType)
 
   case class CsvAccountColumns(date: Int, amount: Int, memo: Int)
 
@@ -62,8 +62,9 @@ object OptionsBuilder {
 
   case class Login(user: User, bank: Bank)
 
-  case class Options(banksToQuery: Map[Login, Seq[OfxAccount]] = Map() withDefaultValue Nil,
+  case class Options(banksToQuery: Map[Login, Seq[WebOfxAccount]] = Map() withDefaultValue Nil,
                      banksFromCsv: Seq[CsvAccount] = Seq(),
+                     banksFromOfxFile: Seq[FileOfxAccount] = Seq(),
                      startDate: DateTime,
                      ledger: File,
                      trainingLedgers: List[File],
@@ -71,7 +72,7 @@ object OptionsBuilder {
                      outputDir: File,
                      verbose: Boolean)
 
-  private def bankAccountsToDownload(conf: Config): Map[Login, Seq[OfxAccount]] = {
+  private def bankAccountsToDownload(conf: Config): Map[Login, Seq[WebOfxAccount]] = {
     val configuredLogins =
       (for {
         logins <- conf.logins.toSeq
@@ -89,9 +90,9 @@ object OptionsBuilder {
 
     val logins = configuredLogins ++ argLogins
 
-    val argLoginToAccounts: Map[Login, Seq[OfxAccount]] = toMultiMap(for (account <- accounts) yield {
+    val argLoginToAccounts: Map[Login, Seq[WebOfxAccount]] = toMultiMap(for (account <- accounts) yield {
       account.split(':').toList match {
-        case b :: r :: a :: t :: ledgerName => logins(b) -> OfxAccount(ledgerName mkString ":", r, a, AccountType.from(t))
+        case b :: r :: a :: t :: ledgerName => logins(b) -> WebOfxAccount(ledgerName mkString ":", r, a, AccountType.from(t))
         case _ => throw new IllegalArgumentException
       }
     })
@@ -106,14 +107,14 @@ object OptionsBuilder {
         a <- account.get("account")
         t <- account.get("type")
       } yield {
-        logins(b) -> OfxAccount(ledgerName, r, a, AccountType.from(t))
+        logins(b) -> WebOfxAccount(ledgerName, r, a, AccountType.from(t))
       })
 
     configuredLoginToAccounts ++ argLoginToAccounts
   }
 
 
-  private def bankAccountsToLoad(conf: Config) =
+  private def bankAccountsToLoadCsv(conf: Config) =
     for {
       accounts <- conf.accounts.toSeq
       account <- accounts.toSeq
@@ -129,6 +130,15 @@ object OptionsBuilder {
       CsvAccount(ledgerName, new File(csv), header.toBoolean, DateTimeFormat.forPattern(dateFormat), CsvAccountColumns(dateC.toInt, amountC.toInt, memoC.toInt), invertC.toBoolean)
     }
 
+  case class FileOfxAccount(ledgerAccount: String, file: File)
+
+  private def bankAccountsToLoadOfx(conf: Config) = for {
+    accounts <- conf.accounts.toSeq
+    account <- accounts.toSeq
+    ledgerName <- account.get("ledgerName")
+    ofx <- account.get("ofxFile")
+  } yield FileOfxAccount(ledgerName, new File(ofx))
+
   def build = {
     val config =
       if (configArg != null) yamlMapper.readValue[Config](new File(configArg))
@@ -138,20 +148,27 @@ object OptionsBuilder {
       knownBanks = knownBanks ++ o
     }
 
-    val load: Seq[CsvAccount] = bankAccountsToLoad(config)
+    val download = bankAccountsToDownload(config)
+    val loadCsv: Seq[CsvAccount] = bankAccountsToLoadCsv(config)
+    val loadOfx = bankAccountsToLoadOfx(config)
+
     val od = if (outputArg == null) new File(".") else new File(outputArg)
     if (!od.exists()) od.mkdirs()
     if (!od.isDirectory) throw new IllegalArgumentException("output-dir is not a directory")
-    val download = bankAccountsToDownload(config)
+
     val ss: Seq[String] = download.toSeq flatMap { _._2 } map { _.ledgerAccount }
-    val ss1: Seq[String] = load.toSeq map { _.ledgerAccount }
-    val ledgerAccounts: Seq[String] = ss.toList ::: ss1.toList
+    val ss1: Seq[String] = loadCsv.toSeq map { _.ledgerAccount }
+    val ss2: Seq[String] = loadOfx.toSeq map { _.ledgerAccount }
+
+    val ledgerAccounts: Seq[String] = ss ++ ss1 ++ ss2
+
     val startDate: DateTime =
       if (days < 0) pattern parseDateTime this.startDate
       else new DateTime().withMillisOfDay(0).minusDays(days)
     Options(
       banksToQuery = download,
-      banksFromCsv = load,
+      banksFromCsv = loadCsv,
+      banksFromOfxFile = loadOfx,
       startDate = startDate,
       ledger = new File(ledger),
       trainingLedgers = training.toList map {s => new File(s)},
