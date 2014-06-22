@@ -1,14 +1,14 @@
 package org.vvcephei.banketl
 
 import com.beust.jcommander.JCommander
-
 import org.joda.time.DateTime
-import org.vvcephei.banketl.etl.{EtlOfx, EtlCsv}
-import scala.io.Source
-import org.vvcephei.banketl.ui.Classifier.{Account, Skip, Quit}
+import org.vvcephei.banketl.etl.{EtlCsv, EtlOfx}
+import org.vvcephei.banketl.ui.Classifier.{Account, Quit, Skip}
+import org.vvcephei.scalaledger.lib.model.{LedgerTransaction, Posting}
 import org.vvcephei.scalaledger.lib.parse.LedgerDataFileParser
 import org.vvcephei.scalaledger.lib.write.LedgerDataFileWriter
-import org.vvcephei.scalaledger.lib.model.{Posting, LedgerTransaction}
+
+import scala.io.Source
 
 case class BankEtlTransaction(account: String, date: DateTime, amount: Double, description: List[String])
 
@@ -21,7 +21,7 @@ object ETL {
   def main(opts: OptionsBuilder.Options) {
     val now = DateTime.now()
     val ledger = LedgerDataFileParser parse Source.fromFile(opts.ledger).getLines()
-    val extraTraining = opts.trainingLedgers flatMap {f => (LedgerDataFileParser parse Source.fromFile(f).getLines()).transactions}
+    val extraTraining = opts.trainingLedgers flatMap { f => (LedgerDataFileParser parse Source.fromFile(f).getLines()).transactions}
     val oldAndNewTransactions = ledger.transactions ++ extraTraining
     val matcher: LedgerTransactionMatcher = LedgerTransactionMatcher(oldAndNewTransactions)
     val trxClassifier = ml.Classifier(oldAndNewTransactions, opts.ledgerAccounts, opts.verbose)
@@ -32,13 +32,15 @@ object ETL {
     val csvs = EtlCsv.etl(opts, now, matcher)
     val toLoad = ofxs ::: csvs
 
-    val withGuessedAccounts = toLoad.toStream map { tr => trxClassifier.classify(tr) -> tr }
+    val withGuessedAccounts = toLoad.sortBy(_.date.toDate) map { tr => trxClassifier.classify(tr) -> tr}
 
     val ledgerWriter = LedgerDataFileWriter(opts.ledger, append = true)
 
+    val total = withGuessedAccounts.size
+
     try {
-      for ((guessedAcct, transaction) <- withGuessedAccounts) {
-        val resp = ui.Classifier.classify(guessedAcct, transaction)
+      for (((guessedAcct, transaction), index) <- withGuessedAccounts.zipWithIndex) {
+        val resp = ui.Classifier.classify(guessedAcct, transaction, index, total)
         resp match {
           case Quit() =>
             ledgerWriter.close()

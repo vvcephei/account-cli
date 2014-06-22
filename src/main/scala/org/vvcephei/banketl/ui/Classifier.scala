@@ -25,12 +25,13 @@ object Classifier {
 
   private def bar(length: Int) = "-" * length
 
-  private def transactionFormatter(t: BankEtlTransaction) = {
+  private def transactionFormatter(t: BankEtlTransaction, index: Int, total: Int) = {
     val d = dateFormatter(t.date)
     val a = moneyFormatter(t.amount)
     val s = descriptionFormatter(t.description)
-    val border = """+-%s-+-%s-+-%s-+-%s-+""".format(bar(t.account.length), bar(d.length), bar(a.length), bar(s.length))
-    val body = """| %s | %s | %s | %s |""" format(t.account, d, a, s)
+    val indexStr = s"${index+1}/$total"
+    val border = """+-%s-+-%s-+-%s-+-%s-+-%s-+""".format(bar(indexStr.length), bar(t.account.length), bar(d.length), bar(a.length), bar(s.length))
+    val body =   """| %s | %s | %s | %s | %s |""" format(indexStr, t.account, d, a, s)
     border + "\n" + body + "\n" + border
   }
 
@@ -40,9 +41,9 @@ object Classifier {
 
   private def menu(accounts: List[String]) = "([account] / [q]uit/ [s]kip / %s)".format(accounts.zipWithIndex map { p => "[" + (p._2 + 1) + "]" + p._1 } mkString " / ")
 
-  def classify(guesses: List[String], transaction: BankEtlTransaction): Result = {
+  def classify(guesses: List[String], transaction: BankEtlTransaction, index: Int, total: Int): Result = {
     println("\n")
-    println(transactionFormatter(transaction))
+    println(transactionFormatter(transaction, index, total))
     val resp = readLine(question(transaction.amount) + " " + menu(guesses) + " ").trim
     resp match {
       case "q" => Quit()

@@ -2,7 +2,7 @@ import AssemblyKeys._ // put this at the top of the file
 
 name := "account-cli"
 
-version := "1.2"
+version := "1.3"
 
 scalaVersion := "2.10.3"
 
