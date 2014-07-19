@@ -93,7 +93,7 @@ object EtlOfx {
     for {
       (client, ofxAccounts) <- clients
       WebOfxAccount(ledgerName, r, a, t) <- ofxAccounts
-      response = client.bankStatements(Seq(Account(r, a, t)), startDate)
+      response = client.bankStatements(Seq(Account(Some(r), Some(a), Some(t))), startDate)
       _ = printErrors(response.errors)
       statement <- response.statements
     } yield {
