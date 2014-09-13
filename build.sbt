@@ -1,4 +1,5 @@
-import AssemblyKeys._ // put this at the top of the file
+import sbtassembly.Plugin.AssemblyKeys
+import AssemblyKeys._
 
 name := "account-cli"
 
@@ -17,7 +18,8 @@ libraryDependencies ++= Seq(
     "com.github.tototoshi" %% "scala-csv" % "0.8.0",
     "com.beust" % "jcommander" % "1.30",
     "org.apache.opennlp" % "opennlp-tools" % "1.5.3",
-    "org.apache.opennlp" % "opennlp-maxent" % "3.0.3"
+    "org.apache.opennlp" % "opennlp-maxent" % "3.0.3",
+    "commons-io" % "commons-io" % "2.4"
 )
 
 libraryDependencies += "org.testng" % "testng" % "6.8" % "test"

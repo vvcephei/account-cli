@@ -1,5 +1,8 @@
 package org.vvcephei.banketl.etl
 
+import java.io.File
+
+import org.apache.commons.io.FileUtils
 import org.vvcephei.banketl.{BankEtlTransaction, LedgerTransactionMatcher, OptionsBuilder}
 import org.joda.time.DateTime
 import org.vvcephei.banketl.Util._
@@ -9,6 +12,7 @@ import org.vvcephei.scalaofx.client.{SourceClient, BankClient}
 import org.vvcephei.scalaledger.lib.model.LedgerTransaction
 import org.vvcephei.scalaofx.lib.model.response.{BankStatement, BankStatementError, Transaction}
 import scala.io.Source
+import scala.collection.JavaConversions._
 
 object EtlOfx {
   private def printErrors(errors: Seq[BankStatementError]) =
@@ -77,21 +81,28 @@ object EtlOfx {
     }
   }
 
-  def statementsFromFile(files: Seq[FileOfxAccount]): Map[String,BankStatement] =
-    (for {
-      FileOfxAccount(ledgerName, file) <- files
+  def toFiles(inode: File) = {
+    if (inode.isFile) Seq(inode)
+    else if (inode.isDirectory) FileUtils.iterateFiles(inode, null, true).toSeq
+    else throw new IllegalArgumentException(s"${inode.getName} is not a file or directory")
+  }
+
+  def statementsFromFile(files: Seq[FileOfxAccount]): Seq[(String,BankStatement)] =
+    for {
+      FileOfxAccount(ledgerName, inode) <- files
+      file <- toFiles(inode)
       loaded = SourceClient.bankStatements(Source.fromFile(file))
       _ = printErrors(loaded.errors)
       statement <- loaded.statements
     } yield {
       println("%s balance: %.2f".format(ledgerName, statement.ledgerBalance))
       ledgerName -> statement
-    }).toMap
+    }
 
-  def statementsFromWeb(banksToQuery: Map[Login, Seq[WebOfxAccount]], startDate: DateTime): Map[String, BankStatement] = {
+  def statementsFromWeb(banksToQuery: Map[Login, Seq[WebOfxAccount]], startDate: DateTime): Seq[(String, BankStatement)] = {
     val clients = for ((login, accounts) <- banksToQuery) yield { BankClient(login.user, login.bank) -> accounts}
     for {
-      (client, ofxAccounts) <- clients
+      (client, ofxAccounts) <- clients.toSeq
       WebOfxAccount(ledgerName, r, a, t) <- ofxAccounts
       response = client.bankStatements(Seq(Account(Some(r), Some(a), Some(t))), startDate)
       _ = printErrors(response.errors)
