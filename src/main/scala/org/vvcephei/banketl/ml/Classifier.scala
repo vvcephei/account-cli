@@ -1,8 +1,12 @@
 package org.vvcephei.banketl.ml
 
-import opennlp.tools.doccat.{DoccatModel, DocumentSampleStream, DocumentCategorizerME}
-import opennlp.tools.util.PlainTextByLineStream
+import java.util
+
+import opennlp.model.{HashSumEventStream, TwoPassDataIndexer, TrainUtil, AbstractModel}
+import opennlp.tools.doccat._
+import opennlp.tools.util.{ObjectStream, TrainingParameters, PlainTextByLineStream}
 import java.io.StringReader
+import opennlp.tools.util.model.ModelUtil
 import org.vvcephei.banketl.BankEtlTransaction
 import org.vvcephei.scalaledger.lib.model.LedgerTransaction
 
@@ -25,9 +29,22 @@ case class Classifier(training: List[LedgerTransaction], ledgerAccounts: Set[Str
     } yield escape(clas) + " " + doc
 
   private val documentSampleStream: DocumentSampleStream = new DocumentSampleStream(new PlainTextByLineStream(new StringReader(trainingDocs mkString "\n")))
+  private val defaultFeatureGenerator = new BagOfWordsFeatureGenerator
   private val model: DoccatModel = {
     println("Training transaction categorizer.")
-    DocumentCategorizerME.train("en", documentSampleStream)
+
+    val events = new DocumentCategorizerEventStream(documentSampleStream, defaultFeatureGenerator)
+    val hses = new HashSumEventStream(events)
+    val model = opennlp.maxent.GIS.trainModel(
+      /*iterations = */100,
+      /*indexer = */new TwoPassDataIndexer(hses, 5, true),
+      /*printMessagesWhileTraining = */false,
+      /*smoothing = */false,
+      /*modelPrior = */null,
+      /*cutoff = */0,
+      /*threads = */1)
+
+    new DoccatModel("en", model)
   }
 
   private val categorizer = new DocumentCategorizerME(model)

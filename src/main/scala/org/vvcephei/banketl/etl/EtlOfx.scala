@@ -28,9 +28,6 @@ object EtlOfx {
     val fileStatements = statementsFromFile(opts.banksFromOfxFile)
     val statements = webStatements ++ fileStatements
 
-    //    println(mapper writeValueAsString statements)
-    //    System.exit(0)
-
     println("got %d statements with %d transactions".format(statements.size, statements.map(_._2).foldLeft(0)(_ + _.transactions.size)))
     println("matching transactions...")
 
