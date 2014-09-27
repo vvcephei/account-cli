@@ -39,8 +39,9 @@ object ETL {
     val total = withGuessedAccounts.size
 
     try {
+      val classifier = new ui.Classifier(oldAndNewTransactions.flatMap(_.postings.map(_.account)).toSet)
       for (((guessedAcct, transaction), index) <- withGuessedAccounts.zipWithIndex) {
-        val resp = ui.Classifier.classify(guessedAcct, transaction, index, total)
+        val resp = classifier.classify(guessedAcct, transaction, index, total)
         resp match {
           case Quit() =>
             ledgerWriter.close()

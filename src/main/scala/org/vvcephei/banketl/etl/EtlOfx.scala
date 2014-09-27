@@ -3,21 +3,24 @@ package org.vvcephei.banketl.etl
 import java.io.File
 
 import org.apache.commons.io.FileUtils
-import org.vvcephei.banketl.{BankEtlTransaction, LedgerTransactionMatcher, OptionsBuilder}
 import org.joda.time.DateTime
-import org.vvcephei.banketl.Util._
 import org.vvcephei.banketl.OptionsBuilder.{FileOfxAccount, Login, WebOfxAccount}
-import org.vvcephei.scalaofx.lib.model.Account
-import org.vvcephei.scalaofx.client.{SourceClient, BankClient}
+import org.vvcephei.banketl.Util._
+import org.vvcephei.banketl.{BankEtlTransaction, LedgerTransactionMatcher, OptionsBuilder}
 import org.vvcephei.scalaledger.lib.model.LedgerTransaction
+import org.vvcephei.scalaofx.client.{BankClient, SourceClient}
+import org.vvcephei.scalaofx.lib.model.Account
 import org.vvcephei.scalaofx.lib.model.response.{BankStatement, BankStatementError, Transaction}
-import scala.io.Source
+
 import scala.collection.JavaConversions._
+import scala.io.Source
 
 object EtlOfx {
   private def printErrors(errors: Seq[BankStatementError]) =
     if (!errors.isEmpty)
-      println("Errors getting some statements: \n" + (for (err <- errors) yield { "  " + err}).mkString("\n"))
+      println("Errors getting some statements: \n" + (for (err <- errors) yield {
+        "  " + err
+      }).mkString("\n"))
     else ()
 
   def etl(opts: OptionsBuilder.Options, now: DateTime, matcher: LedgerTransactionMatcher): List[BankEtlTransaction] = {
@@ -27,6 +30,14 @@ object EtlOfx {
     val webStatements = statementsFromWeb(opts.banksToQuery, opts.startDate)
     val fileStatements = statementsFromFile(opts.banksFromOfxFile)
     val statements = webStatements ++ fileStatements
+
+    val maxNameLength = statements.map(_._1.length).max
+
+    for ((name, statement) <- statements.sortBy {
+      case (name, stmt) => (name, stmt.endTime.getOrElse(new DateTime()).getMillis, stmt.startTime.getOrElse(new DateTime()).getMillis)
+    }) {
+      println(statementSummary(s"%-${maxNameLength}s".format(name), statement))
+    }
 
     println("got %d statements with %d transactions".format(statements.size, statements.map(_._2).foldLeft(0)(_ + _.transactions.size)))
     println("matching transactions...")
@@ -78,13 +89,7 @@ object EtlOfx {
     }
   }
 
-  def toFiles(inode: File) = {
-    if (inode.isFile) Seq(inode)
-    else if (inode.isDirectory) FileUtils.iterateFiles(inode, null, true).toSeq
-    else throw new IllegalArgumentException(s"${inode.getName} is not a file or directory")
-  }
-
-  def statementsFromFile(files: Seq[FileOfxAccount]): Seq[(String,BankStatement)] =
+  private[this] def statementsFromFile(files: Seq[FileOfxAccount]): Seq[(String, BankStatement)] =
     for {
       FileOfxAccount(ledgerName, inode) <- files
       file <- toFiles(inode)
@@ -92,12 +97,13 @@ object EtlOfx {
       _ = printErrors(loaded.errors)
       statement <- loaded.statements
     } yield {
-      println("%s balance: %.2f".format(ledgerName, statement.ledgerBalance))
-      ledgerName -> statement
+      (ledgerName, statement)
     }
 
-  def statementsFromWeb(banksToQuery: Map[Login, Seq[WebOfxAccount]], startDate: DateTime): Seq[(String, BankStatement)] = {
-    val clients = for ((login, accounts) <- banksToQuery) yield { BankClient(login.user, login.bank) -> accounts}
+  private[this] def statementsFromWeb(banksToQuery: Map[Login, Seq[WebOfxAccount]], startDate: DateTime): Seq[(String, BankStatement)] = {
+    val clients = for ((login, accounts) <- banksToQuery) yield {
+      BankClient(login.user, login.bank) -> accounts
+    }
     for {
       (client, ofxAccounts) <- clients.toSeq
       WebOfxAccount(ledgerName, r, a, t) <- ofxAccounts
@@ -105,8 +111,20 @@ object EtlOfx {
       _ = printErrors(response.errors)
       statement <- response.statements
     } yield {
-      println("%s balance: %.2f".format(ledgerName, statement.ledgerBalance))
-      ledgerName -> statement
+      (ledgerName, statement)
     }
   }
+
+  private[this] def toFiles(inode: File) = {
+    if (inode.isFile) Seq(inode)
+    else if (inode.isDirectory) FileUtils.iterateFiles(inode, null, true).toSeq
+    else throw new IllegalArgumentException(s"${inode.getName} is not a file or directory")
+  }
+
+
+  private[this] def statementSummary(ledgerName: String, statement: BankStatement): String =
+    f"$ledgerName ${string(statement.startTime)} to ${string(statement.endTime)} balance: ${statement.ledgerBalance}%.2f"
+
+
+  private[this] def string(odt: Option[DateTime]) = (for (dt <- odt) yield dt.toString("yyyy-MM-dd")) getOrElse "?"
 }

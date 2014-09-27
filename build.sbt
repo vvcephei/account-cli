@@ -19,7 +19,8 @@ libraryDependencies ++= Seq(
     "com.beust" % "jcommander" % "1.30",
     "org.apache.opennlp" % "opennlp-tools" % "1.5.3",
     "org.apache.opennlp" % "opennlp-maxent" % "3.0.3",
-    "commons-io" % "commons-io" % "2.4"
+    "commons-io" % "commons-io" % "2.4",
+    "jline" % "jline" % "2.12"
 )
 
 libraryDependencies += "org.testng" % "testng" % "6.8" % "test"

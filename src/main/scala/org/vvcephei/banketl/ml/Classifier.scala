@@ -1,14 +1,18 @@
 package org.vvcephei.banketl.ml
 
-import java.util
-
-import opennlp.model.{HashSumEventStream, TwoPassDataIndexer, TrainUtil, AbstractModel}
-import opennlp.tools.doccat._
-import opennlp.tools.util.{ObjectStream, TrainingParameters, PlainTextByLineStream}
 import java.io.StringReader
-import opennlp.tools.util.model.ModelUtil
+
+import opennlp.model.{HashSumEventStream, TwoPassDataIndexer}
+import opennlp.tools.doccat._
+import opennlp.tools.util.PlainTextByLineStream
 import org.vvcephei.banketl.BankEtlTransaction
 import org.vvcephei.scalaledger.lib.model.LedgerTransaction
+
+
+case class Guess(value: String, confidence: Double)
+case class Classification(guesses: List[Guess]) {
+  def top(n: Int) = guesses take n
+}
 
 case class Classifier(training: List[LedgerTransaction], ledgerAccounts: Set[String], debug: Boolean = false) {
   private val tokenizer = Serializer(ledgerAccounts)
@@ -49,17 +53,16 @@ case class Classifier(training: List[LedgerTransaction], ledgerAccounts: Set[Str
 
   private val categorizer = new DocumentCategorizerME(model)
 
-  def classify(tr: BankEtlTransaction): List[String] = {
+
+  def classify(tr: BankEtlTransaction): Classification = {
     val doubles: Array[Double] = categorizer categorize (tokenizer evalSerialize tr)
-    val categories = (for ((d, i) <- doubles.toList.zipWithIndex) yield {
-      unescape(categorizer.getCategory(i)) -> d
+    val guesses = (for ((d, i) <- doubles.toList.zipWithIndex) yield {
+      Guess(unescape(categorizer.getCategory(i)), d)
     }) sortBy {
-      0 - _._2
+      0 - _.confidence
     }
     if (debug) println(tr)
-    if (debug) println(categories)
-    categories take 3 map {
-      _._1
-    }
+    if (debug) println(guesses)
+    Classification(guesses)
   }
 }
