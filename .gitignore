@@ -6,3 +6,4 @@ sbt-launch.jar
 target/
 *.iml
 *.idea/
+ignore/

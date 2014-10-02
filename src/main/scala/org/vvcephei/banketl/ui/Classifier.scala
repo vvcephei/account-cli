@@ -59,7 +59,7 @@ class Classifier(accounts: Set[String]) {
     c
   }
 
-  case class ClassificatonCompleter(classification: Classification) extends Completer {
+  private case class ClassificatonCompleter(classification: Classification) extends Completer {
     override def complete(buffer: String, cursor: Int, candidates: util.List[CharSequence]) = {
       checkNotNull(candidates)
       val strings = classification.guesses.map(_.value)
@@ -69,7 +69,7 @@ class Classifier(accounts: Set[String]) {
         val toAdd =
           for {
             candidate <- strings
-            if candidate.startsWith(buffer)
+            if candidate.toLowerCase.startsWith(buffer.toLowerCase)
           } yield candidate
         candidates.addAll(toAdd)
       }
