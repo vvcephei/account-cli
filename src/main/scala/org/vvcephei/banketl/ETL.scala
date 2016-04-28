@@ -1,5 +1,7 @@
 package org.vvcephei.banketl
 
+import java.io.{File, FileOutputStream, PrintWriter}
+
 import com.beust.jcommander.JCommander
 import org.joda.time.DateTime
 import org.vvcephei.banketl.etl.{EtlCsv, EtlOfx}
@@ -61,6 +63,18 @@ object ETL {
               ))
           )
         }
+      }
+
+      ledgerWriter.close()
+
+      if (opts.jsonFileOut.isDefined){
+        // reload ledger:
+        val ledger = (LedgerDataFileParser parse Source.fromFile(opts.ledger).getLines()).transactions ++ extraTraining
+        val sorted = ledger.sortBy(_.date.toDate)
+        val str = Util.mapper.withDefaultPrettyPrinter.writeValueAsString(sorted)
+        val writer: PrintWriter = new PrintWriter(new FileOutputStream(opts.jsonFileOut.get))
+        writer.write(str)
+        writer.close()
       }
     } finally {
       ledgerWriter.close()

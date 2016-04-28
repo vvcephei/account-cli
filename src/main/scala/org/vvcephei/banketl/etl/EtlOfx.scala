@@ -92,6 +92,7 @@ object EtlOfx {
   private[this] def statementsFromFile(files: Seq[FileOfxAccount]): Seq[(String, BankStatement)] =
     for {
       FileOfxAccount(ledgerName, inode) <- files
+      _ = println(s"getting statements for $ledgerName")
       file <- toFiles(inode)
       loaded = SourceClient.bankStatements(Source.fromFile(file))
       _ = printErrors(loaded.errors)
@@ -107,6 +108,7 @@ object EtlOfx {
     for {
       (client, ofxAccounts) <- clients.toSeq
       WebOfxAccount(ledgerName, r, a, t) <- ofxAccounts
+      _ = println(s"getting statements for $ledgerName")
       response = client.bankStatements(Seq(Account(Some(r), Some(a), Some(t))), startDate)
       _ = printErrors(response.errors)
       statement <- response.statements

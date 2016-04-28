@@ -18,7 +18,7 @@ case class Classifier(training: List[LedgerTransaction], ledgerAccounts: Set[Str
   private val tokenizer = Serializer(ledgerAccounts)
 
   private def escape(clas: String) = {
-    require(!clas.contains("_")) // fixme there are better ways to do this. just being expedient.
+    require(!clas.contains("_"), s"Accounts can't contain an '_': [$clas]") // fixme there are better ways to do this. just being expedient.
     clas.replace(" ", "_")
   }
 

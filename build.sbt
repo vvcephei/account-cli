@@ -20,7 +20,8 @@ libraryDependencies ++= Seq(
     "org.apache.opennlp" % "opennlp-tools" % "1.5.3",
     "org.apache.opennlp" % "opennlp-maxent" % "3.0.3",
     "commons-io" % "commons-io" % "2.4",
-    "jline" % "jline" % "2.12"
+    "jline" % "jline" % "2.12",
+    "net.sourceforge.htmlcleaner" % "htmlcleaner" % "2.9"
 )
 
 libraryDependencies += "org.testng" % "testng" % "6.8" % "test"

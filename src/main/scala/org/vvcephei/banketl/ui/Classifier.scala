@@ -1,6 +1,6 @@
 package org.vvcephei.banketl.ui
 
-import java.util
+import java.io.{File, FileOutputStream, PrintWriter}
 
 import jline.console.ConsoleReader
 import jline.console.completer.{Completer, StringsCompleter}
@@ -8,7 +8,7 @@ import jline.internal.Preconditions._
 import org.vvcephei.banketl.BankEtlTransaction
 import org.joda.time.format.{DateTimeFormatter, DateTimeFormat}
 import org.joda.time.DateTime
-import org.vvcephei.banketl.ml.Classification
+import org.vvcephei.banketl.ml.{Guess, Classification}
 import scala.collection.JavaConversions._
 
 object Classifier {
@@ -26,6 +26,14 @@ object Classifier {
 class Classifier(accounts: Set[String]) {
 
   import Classifier._
+
+  private[this] val _learnLogFile = new PrintWriter(new FileOutputStream(new File("classify.log"), true))
+
+  private[this] def learnLog(transaction: BankEtlTransaction, guesses: Seq[Guess], answer: Guess): Unit = {
+    val right = answer == guesses.head
+    _learnLogFile.println(s"${DateTime.now()}\t${if (right) "RIGHT" else "WRONG"}\t$transaction\t$guesses\t$answer")
+    _learnLogFile.flush()
+  }
 
   private lazy val dateTimeFormatter: DateTimeFormatter = DateTimeFormat.forPattern("YYYY/MM/dd")
 
@@ -60,7 +68,7 @@ class Classifier(accounts: Set[String]) {
   }
 
   private case class ClassificatonCompleter(classification: Classification) extends Completer {
-    override def complete(buffer: String, cursor: Int, candidates: util.List[CharSequence]) = {
+    override def complete(buffer: String, cursor: Int, candidates: java.util.List[CharSequence]) = {
       checkNotNull(candidates)
       val strings = classification.guesses.map(_.value)
       if (buffer == null) {
@@ -83,25 +91,44 @@ class Classifier(accounts: Set[String]) {
   }
 
   def classify(classification: Classification, transaction: BankEtlTransaction, index: Int, total: Int): Result = {
+    setClassification(classification)
+
+    println("\n")
+    if (transaction.amount < 0) {
+      util.yellowln(System.out)(transactionFormatter(transaction, index, total))
+    } else if (transaction.amount > 0) {
+      util.greenln(System.out)(transactionFormatter(transaction, index, total))
+    } else {
+      println(transactionFormatter(transaction, index, total))
+    }
+    val topGuesses: List[Guess] = classification.top(3)
+    val resp = console.readLine(s"${question(transaction.amount)} ${menu(topGuesses.map(_.value))} ").trim
+    resp match {
+      case "q" => Quit()
+      case "s" => Skip()
+      case "" =>
+        learnLog(transaction, topGuesses, topGuesses.head)
+        Account(classification.guesses.head.value)
+      case n if n forall Character.isDigit =>
+        val int: Int = n.toInt
+        require(int > 0 && int <= classification.guesses.length, "Number was out of range")
+        val answer: Guess = classification.guesses(int - 1)
+        learnLog(transaction, topGuesses, answer)
+        Account(answer.value)
+      case s =>
+        val maybeAnswer: Option[Guess] = classification.guesses.find(_.value == s)
+        if (maybeAnswer.isDefined) {
+          learnLog(transaction, topGuesses, maybeAnswer.get)
+        }
+        Account(s)
+    }
+  }
+
+  private[this] def setClassification(classification: Classification) {
     for (compl <- console.getCompleters) {
       console.removeCompleter(compl)
     }
     console.addCompleter(ClassificatonCompleter(classification))
     assert(console.getCompleters.size() == 1)
-
-    println("\n")
-    println(transactionFormatter(transaction, index, total))
-    val top3Guesses: List[String] = classification.top(3).map(_.value)
-    val resp = console.readLine(question(transaction.amount) + " " + menu(top3Guesses) + " ").trim
-    resp match {
-      case "q" => Quit()
-      case "s" => Skip()
-      case "" => Account(classification.guesses.head.value)
-      case n if n forall Character.isDigit =>
-        val int: Int = n.toInt
-        require(int > 0 && int <= classification.guesses.length, "Number was out of range")
-        Account(classification.guesses(int - 1).value)
-      case s => Account(s)
-    }
   }
 }

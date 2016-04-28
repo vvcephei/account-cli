@@ -50,6 +50,9 @@ object OptionsBuilder {
   @Parameter(names = Array("-t", "--training-ledger"), description = "ledger files to learn from")
   var training: java.util.List[String] = Nil
 
+  @Parameter(names = Array("--jsonOut"), description = "also dump the ledgers to a file")
+  var jsonFileOut: String = null
+
   case class WebOfxAccount(ledgerAccount: String, routing: String, account: String, `type`: AccountType)
 
   case class CsvAccountColumns(date: Int, amount: Int, memo: Int)
@@ -70,7 +73,8 @@ object OptionsBuilder {
                      trainingLedgers: List[File],
                      ledgerAccounts: Set[String],
                      outputDir: File,
-                     verbose: Boolean)
+                     verbose: Boolean,
+                     jsonFileOut: Option[File])
 
   private def bankAccountsToDownload(conf: Config): Map[Login, Seq[WebOfxAccount]] = {
     val configuredLogins =
@@ -174,7 +178,9 @@ object OptionsBuilder {
       trainingLedgers = training.toList map {s => new File(s)},
       ledgerAccounts = ledgerAccounts.toSet,
       outputDir = od,
-      verbose = verbose)
+      verbose = verbose,
+      jsonFileOut = Option(jsonFileOut).map(f => new File(f))
+    )
   }
 
 }
