@@ -1,14 +1,13 @@
 package org.vvcephei.banketl
 
-import java.io.{File, FileOutputStream, PrintWriter}
+import java.io.{File, FileOutputStream, FileWriter, PrintWriter}
 
 import com.beust.jcommander.JCommander
 import org.joda.time.DateTime
 import org.vvcephei.banketl.etl.{EtlCsv, EtlOfx}
 import org.vvcephei.banketl.ui.Classifier.{Account, Quit, Skip}
-import org.vvcephei.scalaledger.lib.model.{LedgerTransaction, Posting}
-import org.vvcephei.scalaledger.lib.parse.LedgerDataFileParser
-import org.vvcephei.scalaledger.lib.write.LedgerDataFileWriter
+import org.vvcephei.scalaledger.lib.model.{Posting, Quantity}
+import org.vvcephei.scalaledger.lib.parse.LedgerParser
 
 import scala.io.Source
 
@@ -22,8 +21,8 @@ object ETL {
 
   def main(opts: OptionsBuilder.Options) {
     val now = DateTime.now()
-    val ledger = LedgerDataFileParser parse Source.fromFile(opts.ledger).getLines()
-    val extraTraining = opts.trainingLedgers flatMap { f => (LedgerDataFileParser parse Source.fromFile(f).getLines()).transactions}
+    val ledger = LedgerParser parse opts.ledger
+    val extraTraining = opts.trainingLedgers flatMap { f => (LedgerParser parse f).transactions}
     val oldAndNewTransactions = ledger.transactions ++ extraTraining
     val matcher: LedgerTransactionMatcher = LedgerTransactionMatcher(oldAndNewTransactions)
     val trxClassifier = ml.Classifier(oldAndNewTransactions, opts.ledgerAccounts, opts.verbose)
@@ -36,17 +35,14 @@ object ETL {
 
     val withGuessedAccounts = toLoad.sortBy(_.date.toDate) map { tr => trxClassifier.classify(tr) -> tr}
 
-    val ledgerWriter = LedgerDataFileWriter(opts.ledger, append = true)
-
     val total = withGuessedAccounts.size
 
     try {
-      val classifier = new ui.Classifier(oldAndNewTransactions.flatMap(_.postings.map(_.account)).toSet)
+      val classifier = new ui.Classifier(oldAndNewTransactions.flatMap(_.postings.filter(_.isRight).map(_.right.get.account)).toSet)
       for (((guessedAcct, transaction), index) <- withGuessedAccounts.zipWithIndex) {
         val resp = classifier.classify(guessedAcct, transaction, index, total)
         resp match {
           case Quit() =>
-            ledgerWriter.close()
             println("Exiting...")
             System.exit(0)
           case Skip() => ()
@@ -58,7 +54,7 @@ object ETL {
               description = transaction.description mkString "; ",
               notes = Nil,
               postings = List(
-                Posting(transaction.account, Some(transaction.amount)),
+                Posting(None, transaction.account, Some(Quantity("$",transaction.amount)), None,None),
                 Posting(a, Some(-1.0 * transaction.amount))
               ))
           )
