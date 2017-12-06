@@ -1,28 +1,13 @@
 package org.vvcephei.banketl.etl
 
-import org.vvcephei.banketl.{BankEtlTransaction, LedgerTransactionMatcher, OptionsBuilder}
-import org.joda.time.DateTime
 import com.github.tototoshi.csv.CSVReader
-import org.vvcephei.banketl.Util._
+import org.joda.time.DateTime
 import org.vvcephei.banketl.OptionsBuilder.CsvAccount
-import org.vvcephei.scalaledger.lib.model.LedgerTransaction
+import org.vvcephei.banketl.Util._
+import org.vvcephei.banketl.{BankEtlTransaction, LedgerTransactionMatcher, OptionsBuilder}
+import org.vvcephei.scalaledger.lib.model.Transaction
 
 object EtlCsv {
-  private def toDoubleAmount(amount: String, invert: Boolean) =
-    amount.replaceAll("[^-.0-9]", "").toDouble * (if (invert) -1.0 else 1.0)
-
-  //todo: use a real string similarity measure: https://github.com/rockymadden/stringmetric
-  private def matchPred(line: List[String], acct: CsvAccount) = (entry: LedgerTransaction) => {
-    val amount: Double = toDoubleAmount(line(acct.columns.amount), acct.invertAmount)
-    val doubles: List[Double] = entry.postings filter { _.amount.isDefined } map { _.amount.get }
-    val b: Boolean = ((doubles contains amount) || (doubles contains (-1.0 * amount))) &&
-      (entry.description contains line(acct.columns.memo).trim)
-    b
-  }
-
-  private def audit(line: List[String], matches: Seq[LedgerTransaction], empty: Boolean) =
-    mapper writeValueAsString Map("line" -> line, "matches" -> !empty).++(if (empty) Seq() else Seq("entries" -> matches))
-
   def etl(opts: OptionsBuilder.Options, now: DateTime, matcher: LedgerTransactionMatcher): List[BankEtlTransaction] = {
     println("loading csv files...")
     var headers: Map[String, List[String]] = Map()
@@ -35,7 +20,7 @@ object EtlCsv {
         val lines: List[List[String]] = reader.all()
 
         if (acct.header) {
-          headers = headers + (acct.ledgerAccount -> lines(0))
+          headers = headers + (acct.ledgerAccount -> lines.head)
           acct -> lines.drop(1)
         }
         else acct -> lines
@@ -66,7 +51,25 @@ object EtlCsv {
         account = acct.ledgerAccount,
         date = acct.dateFormat parseDateTime line(acct.columns.date),
         amount = toDoubleAmount(line(acct.columns.amount), acct.invertAmount),
-        description = line(acct.columns.memo) :: removeAll(line, acct.columns.memo, acct.columns.date, acct.columns.amount))
+        description = line(acct.columns.memo) :: removeAll(line, acct.columns.memo, acct.columns.date, acct.columns
+          .amount))
     }
   }
+
+  private def toDoubleAmount(amount: String, invert: Boolean) =
+    amount.replaceAll("[^-.0-9]", "").toDouble * (if (invert) -1.0 else 1.0)
+
+  //todo: use a real string similarity measure: https://github.com/rockymadden/stringmetric
+  private def matchPred(line: List[String], acct: CsvAccount) = (entry: Transaction) => {
+    val amount: Double = toDoubleAmount(line(acct.columns.amount), acct.invertAmount)
+    val doubles: List[Double] = entry.postings.flatMap(_.right.toSeq).flatMap(_.quantity).map(_.amount)
+    val b: Boolean = ((doubles contains amount) || (doubles contains (-1.0 * amount))) &&
+      (entry.transactionStart.description contains line(acct.columns.memo).trim)
+    b
+  }
+
+  private def audit(line: List[String], matches: Seq[Transaction], empty: Boolean) =
+    mapper writeValueAsString Map("line" -> line, "matches" -> !empty).++(
+      if (empty) Seq() else Seq("entries" -> matches)
+    )
 }

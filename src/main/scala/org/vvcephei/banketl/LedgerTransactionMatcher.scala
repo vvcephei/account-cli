@@ -1,17 +1,18 @@
 package org.vvcephei.banketl
 
 import org.joda.time.DateTime
-import scala.io.Source
-import org.vvcephei.scalaledger.lib.parse.{LedgerDataFileParser, Ledger}
-import org.vvcephei.scalaledger.lib.model.LedgerTransaction
+import org.vvcephei.scalaledger.lib.model.Transaction
+import org.vvcephei.scalaledger.lib.parse.LedgerParser
 import org.vvcephei.scalaofx.lib.message
 
-case class LedgerTransactionMatcher(entries: List[LedgerTransaction]) {
+import scala.collection.immutable
+
+case class LedgerTransactionMatcher(entries: List[Transaction]) {
   private val byDate = entries groupBy {
-    t => message.Util.toDateString(t.date)
+    t => message.Util.toDateString(t.transactionStart.date)
   }
 
-  def matches(targetDate: DateTime, pred: LedgerTransaction => Boolean) =
+  def matches(targetDate: DateTime, pred: Transaction => Boolean): immutable.IndexedSeq[Transaction] =
     for {
       d <- (-1 to 1) map targetDate.minusDays
       entry <- byDate.getOrElse(message.Util.toDateString(d), Nil)
@@ -23,9 +24,9 @@ case class LedgerTransactionMatcher(entries: List[LedgerTransaction]) {
 
 object LedgerTransactionMatcher {
   def main(args: Array[String]) {
-    val ledger = LedgerDataFileParser parse Source.fromFile(args(0)).getLines()
+    val ledger = LedgerParser.parse(args(0))
     val matches = LedgerTransactionMatcher(ledger.transactions).entries sortWith {
-      (p1, p2) => p1.date isBefore p2.date
+      (p1, p2) => p1.transactionStart.date isBefore p2.transactionStart.date
     }
     matches foreach println
   }

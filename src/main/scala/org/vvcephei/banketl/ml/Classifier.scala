@@ -6,7 +6,7 @@ import opennlp.model.{HashSumEventStream, TwoPassDataIndexer}
 import opennlp.tools.doccat._
 import opennlp.tools.util.PlainTextByLineStream
 import org.vvcephei.banketl.BankEtlTransaction
-import org.vvcephei.scalaledger.lib.model.LedgerTransaction
+import org.vvcephei.scalaledger.lib.model.Transaction
 
 
 case class Guess(value: String, confidence: Double)
@@ -14,7 +14,7 @@ case class Classification(guesses: List[Guess]) {
   def top(n: Int) = guesses take n
 }
 
-case class Classifier(training: List[LedgerTransaction], ledgerAccounts: Set[String], debug: Boolean = false) {
+case class Classifier(training: List[Transaction], ledgerAccounts: Set[String], debug: Boolean = false) {
   private val tokenizer = Serializer(ledgerAccounts)
 
   private def escape(clas: String) = {

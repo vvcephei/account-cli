@@ -7,3 +7,4 @@ target/
 *.iml
 *.idea/
 ignore/
+classify.log

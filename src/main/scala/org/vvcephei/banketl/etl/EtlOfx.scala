@@ -7,22 +7,14 @@ import org.joda.time.DateTime
 import org.vvcephei.banketl.OptionsBuilder.{FileOfxAccount, Login, WebOfxAccount}
 import org.vvcephei.banketl.Util._
 import org.vvcephei.banketl.{BankEtlTransaction, LedgerTransactionMatcher, OptionsBuilder}
-import org.vvcephei.scalaledger.lib.model.LedgerTransaction
 import org.vvcephei.scalaofx.client.{BankClient, SourceClient}
 import org.vvcephei.scalaofx.lib.model.Account
-import org.vvcephei.scalaofx.lib.model.response.{BankStatement, BankStatementError, Transaction}
+import org.vvcephei.scalaofx.lib.model.response.{BankStatement, BankStatementError}
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters.asScalaIterator
 import scala.io.Source
 
 object EtlOfx {
-  private def printErrors(errors: Seq[BankStatementError]) =
-    if (!errors.isEmpty)
-      println("Errors getting some statements: \n" + (for (err <- errors) yield {
-        "  " + err
-      }).mkString("\n"))
-    else ()
-
   def etl(opts: OptionsBuilder.Options, now: DateTime, matcher: LedgerTransactionMatcher): List[BankEtlTransaction] = {
 
     println("getting statements...")
@@ -34,35 +26,34 @@ object EtlOfx {
     val maxNameLength = statements.map(_._1.length).max
 
     for ((name, statement) <- statements.sortBy {
-      case (name, stmt) => (name, stmt.endTime.getOrElse(new DateTime()).getMillis, stmt.startTime.getOrElse(new DateTime()).getMillis)
+      case (name, stmt) => (name, stmt.endTime.getOrElse(new DateTime()).getMillis, stmt.startTime.getOrElse(new
+          DateTime()).getMillis)
     }) {
       println(statementSummary(s"%-${maxNameLength}s".format(name), statement))
     }
 
-    println("got %d statements with %d transactions".format(statements.size, statements.map(_._2).foldLeft(0)(_ + _.transactions.size)))
+    println("got %d statements with %d transactions".format(statements.size, statements.map(_._2).foldLeft(0)(_ + _
+      .transactions.size)))
     println("matching transactions...")
 
-    def audit(acct: String, trx: Transaction, matches: Seq[LedgerTransaction], empty: Boolean) =
-      mapper writeValueAsString Map("acct" -> acct, "trx" -> trx, "matches" -> !empty).++(if (empty) Seq() else Seq("entries" -> matches))
+    def audit(acct: String, trx: org.vvcephei.scalaofx.lib.model.response.Transaction, matches: Seq[org.vvcephei
+    .scalaledger.lib.model.Transaction], empty: Boolean) =
+      mapper writeValueAsString Map("acct" -> acct, "trx" -> trx, "matches" -> !empty).++(if (empty) Seq() else Seq
+      ("entries" -> matches))
 
     //todo: use a real string similarity measure: https://github.com/rockymadden/stringmetric
-    def matchPred(ledgerAcct: String, trx: Transaction) = (entry: LedgerTransaction) =>
-      ((entry.postings map {
-        _.account
-      }) contains ledgerAcct) &&
-        (entry.postings filter {
-          _.amount.isDefined
-        } map {
-          _.amount.get
-        }).contains(trx.amount) &&
-        ((entry.description contains trx.transactionId) ||
-          trx.name.isDefined && (entry.description contains trx.name.get) ||
-          trx.memo.isDefined && (entry.description contains trx.memo.get))
+    def matchPred(ledgerAcct: String, trx: org.vvcephei.scalaofx.lib.model.response.Transaction) = (entry: org
+    .vvcephei.scalaledger.lib.model.Transaction) =>
+      (entry.postings.flatMap(_.right.toSeq).map(_.account) contains ledgerAcct) &&
+        entry.postings.flatMap(_.right.toSeq).flatMap(_.quantity).map(_.amount).contains(trx.amount) &&
+        ((entry.transactionStart.description contains trx.transactionId) ||
+          trx.name.isDefined && (entry.transactionStart.description contains trx.name.get) ||
+          trx.memo.isDefined && (entry.transactionStart.description contains trx.memo.get))
 
 
     val statementsAndUpdates =
       toMultiMap(for {
-        (ledgerAccount, statement) <- statements.toSeq
+        (ledgerAccount, statement) <- statements
         trx <- statement.transactions
         contains: List[String] = trx.transactionId :: trx.name.toList ::: trx.memo.toList
         matches = matcher.matches(trx.posted, matchPred(ledgerAccount, trx))
@@ -101,7 +92,24 @@ object EtlOfx {
       (ledgerName, statement)
     }
 
-  private[this] def statementsFromWeb(banksToQuery: Map[Login, Seq[WebOfxAccount]], startDate: DateTime): Seq[(String, BankStatement)] = {
+  private def printErrors(errors: Seq[BankStatementError]): Unit =
+    if (errors.nonEmpty)
+      println("Errors getting some statements: \n" + (for (err <- errors) yield {
+        "  " + err
+      }).mkString("\n"))
+    else ()
+
+  private[this] def toFiles(inode: File): Seq[File] = {
+    if (inode.isFile) Seq(inode)
+    else if (inode.isDirectory) asScalaIterator(FileUtils.iterateFiles(inode, null, true)).toSeq
+    else if (!inode.exists()) {
+      println(s"warning: file ${inode.getAbsolutePath} doesn't exist. skipping...")
+      Seq()
+    } else throw new IllegalArgumentException(s"${inode.getName} is not a file or directory")
+  }
+
+  private[this] def statementsFromWeb(banksToQuery: Map[Login, Seq[WebOfxAccount]], startDate: DateTime): Seq[
+    (String, BankStatement)] = {
     val clients = for ((login, accounts) <- banksToQuery) yield {
       BankClient(login.user, login.bank) -> accounts
     }
@@ -117,15 +125,9 @@ object EtlOfx {
     }
   }
 
-  private[this] def toFiles(inode: File) = {
-    if (inode.isFile) Seq(inode)
-    else if (inode.isDirectory) FileUtils.iterateFiles(inode, null, true).toSeq
-    else throw new IllegalArgumentException(s"${inode.getName} is not a file or directory")
-  }
-
-
   private[this] def statementSummary(ledgerName: String, statement: BankStatement): String =
-    f"$ledgerName ${string(statement.startTime)} to ${string(statement.endTime)} balance: ${statement.ledgerBalance}%.2f"
+    f"$ledgerName ${string(statement.startTime)} to ${string(statement.endTime)} balance: ${statement
+      .ledgerBalance}%.2f"
 
 
   private[this] def string(odt: Option[DateTime]) = (for (dt <- odt) yield dt.toString("yyyy-MM-dd")) getOrElse "?"
