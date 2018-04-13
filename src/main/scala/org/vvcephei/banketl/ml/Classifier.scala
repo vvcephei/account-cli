@@ -34,7 +34,10 @@ case class Classifier(training: List[Transaction], ledgerAccounts: Set[String], 
 
   private val documentSampleStream: DocumentSampleStream = new DocumentSampleStream(new PlainTextByLineStream(new StringReader(trainingDocs mkString "\n")))
   private val defaultFeatureGenerator = new BagOfWordsFeatureGenerator
-  private val model: DoccatModel = {
+  private val model: DoccatModel = if (trainingDocs.isEmpty) {
+    println("No training docs available")
+    null
+  } else {
     println("Training transaction categorizer.")
 
     val events = new DocumentCategorizerEventStream(documentSampleStream, defaultFeatureGenerator)
@@ -51,7 +54,7 @@ case class Classifier(training: List[Transaction], ledgerAccounts: Set[String], 
     new DoccatModel("en", model)
   }
 
-  private val categorizer = new DocumentCategorizerME(model)
+  private val categorizer: DocumentCategorizerME = if (model != null) new DocumentCategorizerME(model) else null
 
 
   def classify(tr: BankEtlTransaction): Classification = {

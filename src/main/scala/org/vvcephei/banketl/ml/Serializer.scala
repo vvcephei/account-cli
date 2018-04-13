@@ -31,11 +31,13 @@ case class Serializer(sourceAccounts: Set[String]) {
     }
 
   def evalSerialize(transaction: BankEtlTransaction): String = {
-    val tokens = (for {
+    val tokens = for {
       string <- transaction.description
       token <- tokenizer.tokenize(string).toList
-    } yield token).mkString(" ").toLowerCase
+    } yield token
 
-    tokens
+    val serialized = (tokens ++ tokens.sliding(2).map(ss => ss.mkString("_"))).mkString(" ").toLowerCase
+
+    serialized
   }
 }

@@ -60,10 +60,10 @@ object OptionsBuilder {
   case class CsvAccount(ledgerAccount: String, file: File, header: Boolean, dateFormat: DateTimeFormatter, columns: CsvAccountColumns, invertAmount: Boolean)
 
   case class Config(ofx: Option[Map[String, Bank]] = None,
-                    logins: Option[Map[String, User]] = None,
+                    logins: Option[Map[String, Map[String,String]]] = None,
                     accounts: Option[List[Map[String, String]]] = None)
 
-  case class Login(user: User, bank: Bank)
+  case class Login(user: User, bank: Bank, debug: Boolean = false)
 
   case class Options(banksToQuery: Map[Login, Seq[WebOfxAccount]] = Map() withDefaultValue Nil,
                      banksFromCsv: Seq[CsvAccount] = Seq(),
@@ -82,7 +82,8 @@ object OptionsBuilder {
         logins <- conf.logins.toSeq
         (b, u) <- logins.toSeq
       } yield {
-        b -> Login(u, knownBanks(b))
+        //noinspection MapGetOrElseBoolean
+        b -> Login(User(u("id"),u("password")), knownBanks(b), debug = u.get("debug").map(_.toBoolean).getOrElse(false))
       }).toMap
 
     val argLogins = (for (bank <- banks) yield {

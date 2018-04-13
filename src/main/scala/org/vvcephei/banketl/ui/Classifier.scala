@@ -50,11 +50,11 @@ class Classifier(accounts: Set[String]) {
     val topGuesses: List[Guess] = classification.top(3)
     if ((topGuesses.head.confidence > 0.75) && (topGuesses.tail.head.confidence < 0.1)) {
       // we're pretty sure it's the first one, so just print it and move on..
-      println(s"${question(transaction.amount)} ${menu(topGuesses.map(g => f"${g.value}(${g.confidence}%.2f)"))} (AUTO:1)")
+      println(s"${question(transaction.amount)} ${menu(topGuesses.map(g => s"${g.value}(${(g.confidence * 100).toInt}%)"))} (AUTO:1)")
       Thread.sleep(500)
       Account(classification.guesses.head.value)
     } else {
-      val resp = console.readLine(s"${question(transaction.amount)} ${menu(topGuesses.map(g => f"${g.value}(${g.confidence}%.2f)"))} ").trim
+      val resp = console.readLine(s"${question(transaction.amount)} ${menu(topGuesses.map(g => s"${g.value}(${(g.confidence * 100).toInt}%)"))} ").trim
       resp match {
         case "q" => Quit()
         case "s" => Skip()

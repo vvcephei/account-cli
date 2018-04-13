@@ -5,7 +5,7 @@ version := "1.4-SNAPSHOT"
 scalaVersion := "2.12.4"
 
 libraryDependencies ++= Seq(
-    "org.vvcephei" %% "scala-ofx" % "1.5",
+    "org.vvcephei" %% "scala-ofx" % "1.6",
     "org.vvcephei" %% "scala-ledger" % "2.3",
     "org.joda" % "joda-convert" % "1.2",
     "joda-time" % "joda-time" % "2.4",
