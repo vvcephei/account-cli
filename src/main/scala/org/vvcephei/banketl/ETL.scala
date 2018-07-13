@@ -3,10 +3,14 @@ package org.vvcephei.banketl
 import com.beust.jcommander.JCommander
 import org.joda.time.DateTime
 import org.vvcephei.banketl.etl.{EtlCsv, EtlOfx}
+import org.vvcephei.banketl.ml.Classification
 import org.vvcephei.banketl.ui.Classifier.{Account, Quit, Skip}
 import org.vvcephei.scalaledger.lib.model.{Posting, Quantity, Transaction, TransactionStart}
 import org.vvcephei.scalaledger.lib.parse.LedgerParser
 import org.vvcephei.scalaledger.lib.write.LedgerDataFileWriter
+
+import scala.collection.immutable
+import scala.collection.immutable.Seq
 
 case class BankEtlTransaction(account: String, date: DateTime, amount: Double, description: List[String])
 
@@ -28,17 +32,20 @@ object ETL {
 
     val ofxs = EtlOfx.etl(opts, now, matcher)
     val csvs = EtlCsv.etl(opts, now, matcher)
-    val toLoad = ofxs ::: csvs
+    val toLoad: Seq[BankEtlTransaction] = ofxs ::: csvs
 
-    val withGuessedAccounts = toLoad.sortBy(_.date.toDate) map { tr => trxClassifier.classify(tr) -> tr }
+    val withGuessedAccounts: Seq[(Classification, BankEtlTransaction)] =
+      toLoad.sortBy(_.date.toDate).map(tr => trxClassifier.classify(tr) -> tr)
 
     val total = withGuessedAccounts.size
 
     val ledgerWriter = LedgerDataFileWriter(opts.ledger, append = true)
 
     try {
-      val classifier = new ui.Classifier(oldAndNewTransactions.flatMap(_.postings.filter(_.isRight).map(_.right.get
-        .account)).toSet)
+      val classifier = new ui.Classifier(
+        oldAndNewTransactions.flatMap(_.postings.filter(_.isRight).map(_.right.get.account)).toSet
+      )
+
       for (((guessedAcct, transaction), index) <- withGuessedAccounts.zipWithIndex) {
         val resp = classifier.classify(guessedAcct, transaction, index, total)
         resp match {
@@ -50,8 +57,13 @@ object ETL {
           case Account(a) => ledgerWriter.write(
             Transaction(
               comment = List(),
-              transactionStart = TransactionStart(transaction.date, None, None, transaction.description.mkString("; " +
-                ""), None),
+              transactionStart = TransactionStart(
+                transaction.date,
+                None,
+                None,
+                transaction.description.mkString("; " + ""),
+                None
+              ),
               postings = List(
                 Right(Posting(None, transaction.account, Some(Quantity("$", transaction.amount)), None, None)),
                 Right(Posting(None, a, Some(Quantity("$", -1.0 * transaction.amount)), None, None))

@@ -5,14 +5,13 @@ import org.vvcephei.scalaledger.lib.model.Transaction
 import org.vvcephei.scalaledger.lib.parse.LedgerParser
 import org.vvcephei.scalaofx.lib.message
 
-import scala.collection.immutable
+import scala.collection.immutable.IndexedSeq
 
 case class LedgerTransactionMatcher(entries: List[Transaction]) {
-  private val byDate = entries groupBy {
-    t => message.Util.toDateString(t.transactionStart.date)
-  }
+  private val byDate: Map[String, List[Transaction]] =
+    entries.groupBy(t => message.Util.toDateString(t.transactionStart.date))
 
-  def matches(targetDate: DateTime, pred: Transaction => Boolean): immutable.IndexedSeq[Transaction] =
+  def matches(targetDate: DateTime, pred: Transaction => Boolean): IndexedSeq[Transaction] =
     for {
       d <- (-1 to 1) map targetDate.minusDays
       entry <- byDate.getOrElse(message.Util.toDateString(d), Nil)

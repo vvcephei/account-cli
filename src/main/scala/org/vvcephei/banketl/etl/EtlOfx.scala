@@ -31,6 +31,8 @@ object EtlOfx {
       case (name, stmt) => (name, stmt.endTime.getOrElse(new DateTime()).getMillis, stmt.startTime.getOrElse(new
           DateTime()).getMillis)
     }) {
+      // dynamically constructing the format string based on the length of the longest name
+      //noinspection ScalaMalformedFormatString
       println(statementSummary(s"%-${maxNameLength}s".format(name), statement))
     }
 
@@ -43,21 +45,11 @@ object EtlOfx {
       mapper writeValueAsString Map("acct" -> acct, "trx" -> trx, "matches" -> !empty).++(if (empty) Seq() else Seq
       ("entries" -> matches))
 
-    //todo: use a real string similarity measure: https://github.com/rockymadden/stringmetric
-    def matchPred(ledgerAcct: String, trx: org.vvcephei.scalaofx.lib.model.response.Transaction) = (entry: org
-    .vvcephei.scalaledger.lib.model.Transaction) =>
-      (entry.postings.flatMap(_.right.toSeq).map(_.account) contains ledgerAcct) &&
-        entry.postings.flatMap(_.right.toSeq).flatMap(_.quantity).map(_.amount).contains(trx.amount) &&
-        ((entry.transactionStart.description contains trx.transactionId) ||
-          trx.name.isDefined && (entry.transactionStart.description contains trx.name.get) ||
-          trx.memo.isDefined && (entry.transactionStart.description contains trx.memo.get))
-
 
     val statementsAndUpdates =
       toMultiMap(for {
         (ledgerAccount, statement) <- statements
         trx <- statement.transactions
-        contains: List[String] = trx.transactionId :: trx.name.toList ::: trx.memo.toList
         matches = matcher.matches(trx.posted, matchPred(ledgerAccount, trx))
         empty = matches.isEmpty
         _ = if (opts.verbose) println(audit(ledgerAccount, trx, matches, empty)) else ()
@@ -78,9 +70,26 @@ object EtlOfx {
         account = ledgerAccount,
         date = trx.posted,
         amount = trx.amount,
-        description = trx.name.toList ::: trx.memo.toList ::: List(trx.`type`.toString, trx.transactionId))
+        description =
+          trx.name.map(sanitizeTransactionName).toList :::
+            trx.memo.toList :::
+            List(trx.`type`.toString, trx.transactionId))
     }
   }
+
+  //todo: use a real string similarity measure: https://github.com/rockymadden/stringmetric
+  private def matchPred(ledgerAcct: String, trx: org.vvcephei.scalaofx.lib.model.response.Transaction) =
+    (entry: org.vvcephei.scalaledger.lib.model.Transaction) => {
+      val accountMatches = entry.postings.flatMap(_.right.toSeq).map(_.account) contains ledgerAcct
+      val quantityMatches = entry.postings.flatMap(_.right.toSeq).flatMap(_.quantity).map(_.amount).contains(trx.amount)
+      val transactionIdMatches = entry.transactionStart.description contains trx.transactionId
+      val transactionNameMatches = trx.name.isDefined && (entry.transactionStart.description contains
+        sanitizeTransactionName(trx.name.get))
+      val transactionMemoMatches = trx.memo.isDefined && (entry.transactionStart.description contains trx.memo.get)
+      accountMatches && quantityMatches && (transactionIdMatches || transactionNameMatches || transactionMemoMatches)
+    }
+
+  private def sanitizeTransactionName(name: String): String = name.replaceAllLiterally(";", "")
 
   private[this] def statementsFromFile(files: Seq[FileOfxAccount]): Seq[(String, BankStatement)] = {
     implicit val codec: Codec = Codec("UTF-8")
