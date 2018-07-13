@@ -1,6 +1,6 @@
 name := "account-cli"
 
-version := "1.4-SNAPSHOT"
+version := "1.4"
 
 scalaVersion := "2.12.4"
 
