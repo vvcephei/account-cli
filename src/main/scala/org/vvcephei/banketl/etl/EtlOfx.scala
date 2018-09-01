@@ -82,10 +82,10 @@ object EtlOfx {
     (entry: org.vvcephei.scalaledger.lib.model.Transaction) => {
       val accountMatches = entry.postings.flatMap(_.right.toSeq).map(_.account) contains ledgerAcct
       val quantityMatches = entry.postings.flatMap(_.right.toSeq).flatMap(_.quantity).map(_.amount).contains(trx.amount)
-      val transactionIdMatches = entry.transactionStart.description contains trx.transactionId
-      val transactionNameMatches = trx.name.isDefined && (entry.transactionStart.description contains
-        sanitizeTransactionName(trx.name.get))
-      val transactionMemoMatches = trx.memo.isDefined && (entry.transactionStart.description contains trx.memo.get)
+      val descriptionAndComment = entry.transactionStart.description + entry.transactionStart.comment.map(_.comment).getOrElse("")
+      val transactionIdMatches = descriptionAndComment contains trx.transactionId
+      val transactionNameMatches = trx.name.isDefined && (descriptionAndComment contains sanitizeTransactionName(trx.name.get))
+      val transactionMemoMatches = trx.memo.isDefined && (descriptionAndComment contains trx.memo.get)
       accountMatches && quantityMatches && (transactionIdMatches || transactionNameMatches || transactionMemoMatches)
     }
 
