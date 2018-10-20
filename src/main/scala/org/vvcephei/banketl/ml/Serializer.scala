@@ -5,7 +5,7 @@ import org.vvcephei.banketl.BankEtlTransaction
 import org.vvcephei.scalaledger.lib.model.Transaction
 
 case class Serializer(sourceAccounts: Set[String]) {
-  val tokenizer = SimpleTokenizer.INSTANCE
+  val tokenizer: SimpleTokenizer = SimpleTokenizer.INSTANCE
 
   def trainingSerialize(transaction: Transaction): Seq[(String, String)] =
     for {

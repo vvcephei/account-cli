@@ -48,7 +48,7 @@ class Classifier(accounts: Set[String]) {
       println(transactionFormatter(transaction, index, total))
     }
     val topGuesses: List[Guess] = classification.top(3)
-    if ((topGuesses.head.confidence > 0.75) && (topGuesses.tail.head.confidence < 0.1)) {
+    if (topGuesses.nonEmpty && (topGuesses.head.confidence > 0.75) && (topGuesses.tail.head.confidence < 0.1)) {
       // we're pretty sure it's the first one, so just print it and move on..
       println(s"${question(transaction.amount)} ${menu(topGuesses.map(g => s"${g.value}(${(g.confidence * 100).toInt}%)"))} (AUTO:1)")
       Thread.sleep(500)
